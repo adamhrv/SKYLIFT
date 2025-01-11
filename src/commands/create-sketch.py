@@ -21,10 +21,11 @@ from src.settings.app_cfg import INO_TEMPLATES
   default='esp32',
   help='Arduino template type')
 @click.option('-o', '--output', 'opt_output', required=True,
-  help='Output sketcch directory')
+  help='Output sketch directory')
 @click.option('--max-networks', 'opt_max_networks', 
-  type=click.IntRange(1,30),
-  default=10)
+  type=click.IntRange(1,100),
+  default=None,
+  help='Maximum number of networks to include (default: all)')
 @click.option('--max-rssi', 'opt_max_rssi', default=-30)
 @click.option('--min-rssi', 'opt_min_rssi', default=-100)
 @click.option('-c', '--channel', 'opt_channels', multiple=True,
@@ -102,8 +103,8 @@ def cli(ctx, opt_input, opt_board, opt_output, opt_max_networks,
   bssids = ['byte bssids[NN][6] = {']
   ssid_lengths = ['uint8_t ssid_lengths[NN] = {']
   for wifi_net in wifi_nets:
-    ssids.append(f'\t"{wifi_net.ssid}", ')
-    ssid_lengths.append(f'\t{len(wifi_net.ssid)}, ')
+    ssids.append(f'\t"{wifi_net.ssid or ""}", ')  # Handle None ssids
+    ssid_lengths.append(f'\t{len(wifi_net.ssid or "")}, ')  # Handle None ssids
     bssids.append(f'\t{wifi_net.bssid_as_hex_list_ino()}, ')
   ssids.append('};')
   bssids.append('};')

@@ -7,9 +7,7 @@
 #
 #############################################################################
 
-from typing import Dict, Tuple, List
-from typing import (Dict, FrozenSet, List)
-
+from typing import Dict, List, Optional
 from pydantic import BaseModel
 from src.utils.misc_utils import map_range
 
@@ -24,7 +22,7 @@ class Network(BaseModel):
   rssi: int
   latitude: float=0.0
   longitude: float=0.0
-  ssid: str=''
+  ssid: Optional[str] = ''
 
   def bssid_as_hex_list_ino(self):
     hex_str = ', '.join([f'0x{x}' for x in self.bssid.split(':')])
@@ -35,30 +33,37 @@ class Network(BaseModel):
 
 
 class Networks(BaseModel):
-  filename: str
+  networks: List[Network]
+  filename: str = ''
   n_wifi: int=0
   n_bt: int=0
   wifi: List[Network]=[]
   bt: List[Network]=[]
 
   def model_post_init(self):
+    if not self.filename and self.meta and self.meta.filepath:
+      self.filename = self.meta.filepath.split('/')[-1]
+    if self.networks and not self.wifi:
+      self.wifi = self.networks
+
     # sort by descending rssi values
     self.wifi = sorted(self.wifi, key=lambda x: (x.rssi), reverse=True)
     self.bt = sorted(self.bt, key=lambda x: (x.rssi), reverse=True)
     self.n_wifi = len(self.wifi)
     self.n_bt = len(self.bt)
 
-
   def get_networks(self, min_rssi=None, max_rssi=None, max_networks=None, 
     device_type='wifi'):
     if device_type == 'wifi':
-      nets = self.wifi
+      nets = self.wifi or self.networks
     elif device_type == 'bt':
       nets = self.bt
+
+
     rssis = [x.rssi for x in nets]
     min_rssi = min_rssi if min_rssi else min(rssis)
     max_rssi = max_rssi if max_rssi else max(rssis)
     max_networks = max_networks if max_networks else len(nets)
-    nets = [x for x in self.wifi if x.rssi >= min_rssi and x.rssi <= max_rssi]
+    nets = [x for x in nets if x.rssi >= min_rssi and x.rssi <= max_rssi]
     nets = nets[:max_networks]
     return nets
